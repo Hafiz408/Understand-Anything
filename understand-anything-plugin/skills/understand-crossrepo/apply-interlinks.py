@@ -169,6 +169,30 @@ def _make_external_node(svc: str) -> dict:
     }
 
 
+_VALID_DIRECTIONS = ("forward", "backward", "bidirectional")
+
+
+def _normalize_edge(edge: dict) -> dict:
+    """Clamp/repair edge fields the dashboard's core/schema.ts enforces.
+
+    Intra-repo edges are inherited verbatim from the per-repo graphs, some of which
+    the base /understand tool emits with a `weight` outside [0,1] (e.g. 2) or a
+    missing/invalid `direction`. core/schema auto-corrects these on load and shows
+    an "N auto-corrections" banner. Normalize here so the combined graph renders
+    clean regardless of source-graph quirks — the edge equivalent of _backfill_node.
+    """
+    w = edge.get("weight")
+    if not isinstance(w, (int, float)) or isinstance(w, bool):
+        edge["weight"] = 0.5
+    elif w < 0:
+        edge["weight"] = 0.0
+    elif w > 1:
+        edge["weight"] = 1.0
+    if edge.get("direction") not in _VALID_DIRECTIONS:
+        edge["direction"] = "forward"
+    return edge
+
+
 def apply(out: Path) -> None:
     intermediate = out / ".understand-anything" / "intermediate"
     ua_dir = out / ".understand-anything"
@@ -347,7 +371,7 @@ def apply(out: Path) -> None:
 
     # Sort nodes and layers for determinism
     final_nodes = sorted(nodes, key=lambda n: n["id"])
-    final_edges = sorted(all_edges, key=lambda e: (e.get("source", ""), e.get("target", ""), e.get("type", "")))
+    final_edges = sorted((_normalize_edge(e) for e in all_edges), key=lambda e: (e.get("source", ""), e.get("target", ""), e.get("type", "")))
     final_layers = sorted(layers, key=lambda l: l["id"])
     # Sort nodeIds within each layer for determinism
     for layer in final_layers:
