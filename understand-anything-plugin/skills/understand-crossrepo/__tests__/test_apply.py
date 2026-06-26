@@ -428,8 +428,13 @@ def test_dashboard_schema_requirements():
                 {"id": "module:svc_a", "type": "module", "name": "svc_a",
                  "summary": "anchor", "tags": ["repo:svc_a"], "repo": "svc_a"},
             ],
-            "edges": [{"source": "module:svc_a", "target": "file:svc_a/m.py",
-                       "type": "contains", "direction": "forward", "weight": 0.8}],
+            "edges": [
+                {"source": "module:svc_a", "target": "file:svc_a/m.py",
+                 "type": "contains", "direction": "forward", "weight": 0.8},
+                # inherited source-graph quirks: weight out of [0,1] + invalid direction
+                {"source": "file:svc_a/m.py", "target": "module:svc_a",
+                 "type": "related", "direction": "sideways", "weight": 2},
+            ],
             "layers": [{"id": "layer:svc_a", "name": "svc_a", "description": "l",
                         "nodeIds": ["file:svc_a/m.py", "module:svc_a"]}],
         }
@@ -463,6 +468,17 @@ def test_dashboard_schema_requirements():
         assert auth["type"] == "depends_on", f"expected mapped depends_on, got {auth['type']}"
         assert "authenticates_via" in (auth.get("description") or ""), \
             f"original type not preserved in description: {auth.get('description')}"
+
+        # every edge must have weight in [0,1] and a valid direction (clamped/repaired
+        # from source-graph quirks) so the dashboard shows 0 auto-corrections
+        for e in kg["edges"]:
+            assert isinstance(e.get("weight"), (int, float)) and 0 <= e["weight"] <= 1, \
+                f"edge weight out of [0,1]: {e}"
+            assert e.get("direction") in ("forward", "backward", "bidirectional"), \
+                f"edge has invalid direction: {e}"
+        clamped = next(e for e in kg["edges"] if e["source"] == "file:svc_a/m.py" and e["target"] == "module:svc_a")
+        assert clamped["weight"] == 1.0, f"weight 2 should clamp to 1.0, got {clamped['weight']}"
+        assert clamped["direction"] == "forward", f"invalid direction should repair to forward, got {clamped['direction']}"
 
 
 if __name__ == "__main__":
