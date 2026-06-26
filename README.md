@@ -53,6 +53,8 @@
 >
 > This fork extends the upstream **Understand Anything** base version with a **multi-level drill-down (expand-in-place)** dashboard experience, plus several rendering correctness fixes. The work lives on the `feat/multi-level-drilldown` branch and is proposed upstream in [Egonex-AI/Understand-Anything#520](https://github.com/Egonex-AI/Understand-Anything/pull/520).
 >
+> **Why it helps** — On a large codebase the default graph is an overwhelming wall of thousands of nodes, and clicking a node re-roots the whole view so you lose your place. Drill-down flips that: start at the high-level repo/layer view and expand *only* the part you care about, in place, while everything around it stays put and relationships re-route to follow you. You learn a 200k-line system the way a person actually would — top-down and by need — instead of being dropped into the entire graph at once. The payoff: faster onboarding, far less cognitive overload, and you never lose the surrounding context while you dig into a detail.
+>
 > **What's new**
 > - **Expand-in-place navigation** — drill the file-path hierarchy by expanding named cluster boxes in place (repo → folder → file → function); neighbours reflow with no overlap and edges re-route to the deepest visible node on each end, via a single nested ELK layout pass.
 > - **Drill to functions/classes** — click a file (any type: `file`/`endpoint`/`service`/`schema`/…) to nest its functions and classes inside it as a sized box.
@@ -70,6 +72,8 @@
 > ## 🔗 Cross-repo knowledge graphs in this fork
 >
 > A second enhancement adds **`/understand-crossrepo`** — combine several interlinked microservice repos into **one** namespaced, per-repo-layered, cross-linked knowledge graph, explorable in the existing dashboard (**no dashboard changes**). The work lives on the `feat/understand-crossrepo` branch and is proposed upstream in [Egonex-AI/Understand-Anything#521](https://github.com/Egonex-AI/Understand-Anything/pull/521).
+>
+> **Why it helps** — Understand Anything analyzes one repo at a time, so on a microservice platform you can't see how the services actually fit together — the links that matter are *runtime* integrations (HTTP calls between services, a shared SSO/Keycloak provider, iframe embeds, Pub/Sub, shared buckets) that per-repo static analysis is blind to. This draws the whole platform as a single picture: which service calls which, who authenticates through Keycloak, what shares GCP/storage. The payoff: onboard to a multi-service system in one view instead of stitching N graphs together in your head, trace cross-service dependencies, and judge the blast radius of a change *across* repos — not just inside one. Each edge carries evidence, so a link is a lead you can verify, not a guess.
 >
 > **What's new**
 > - **Multi-repo orchestration** — select N repos, reuse-or-fill each repo's `/understand` graph (fresh by git commit), then combine into one graph.
