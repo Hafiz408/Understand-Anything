@@ -76,7 +76,7 @@
 
 ### 🔗 [Cross-repo knowledge graphs](https://github.com/Hafiz408/Understand-Anything/tree/feat/understand-crossrepo)
 
-<sub>Branch: [`feat/understand-crossrepo`](https://github.com/Hafiz408/Understand-Anything/tree/feat/understand-crossrepo) · Proposed upstream: [Egonex-AI/Understand-Anything#521](https://github.com/Egonex-AI/Understand-Anything/pull/521)</sub>
+<sub>Branch: [`feat/understand-crossrepo`](https://github.com/Hafiz408/Understand-Anything/tree/feat/understand-crossrepo) · Proposed upstream: [Egonex-AI/Understand-Anything#522](https://github.com/Egonex-AI/Understand-Anything/pull/522)</sub>
 
 **What it is** — a new **`/understand-crossrepo`** command that takes several related repos and builds a *single* combined knowledge graph — each repo as its own layer, wired together with typed cross-service edges — viewable in the existing dashboard with **no dashboard changes**.
 
