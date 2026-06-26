@@ -157,7 +157,7 @@ Point `/understand-knowledge` at a [Karpathy-pattern LLM wiki](https://gist.gith
 ### 1. Install the plugin
 
 ```bash
-/plugin marketplace add Egonex-AI/Understand-Anything
+/plugin marketplace add Hafiz408/Understand-Anything
 /plugin install understand-anything
 ```
 
@@ -237,7 +237,7 @@ Understand-Anything works across multiple AI coding platforms.
 ### Claude Code (Native)
 
 ```bash
-/plugin marketplace add Egonex-AI/Understand-Anything
+/plugin marketplace add Hafiz408/Understand-Anything
 /plugin install understand-anything
 ```
 
