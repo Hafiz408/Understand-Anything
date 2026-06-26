@@ -51,37 +51,44 @@
 > [!NOTE]
 > ## 🔧 Enhancements in this fork
 >
-> This fork extends the upstream **Understand Anything** base version with a **multi-level drill-down (expand-in-place)** dashboard experience, plus several rendering correctness fixes. The work lives on the `feat/multi-level-drilldown` branch and is proposed upstream in [Egonex-AI/Understand-Anything#520](https://github.com/Egonex-AI/Understand-Anything/pull/520).
->
-> **Why it helps** — On a large codebase the default graph is an overwhelming wall of thousands of nodes, and clicking a node re-roots the whole view so you lose your place. Drill-down flips that: start at the high-level repo/layer view and expand *only* the part you care about, in place, while everything around it stays put and relationships re-route to follow you. You learn a 200k-line system the way a person actually would — top-down and by need — instead of being dropped into the entire graph at once. The payoff: faster onboarding, far less cognitive overload, and you never lose the surrounding context while you dig into a detail.
->
-> **What's new**
-> - **Expand-in-place navigation** — drill the file-path hierarchy by expanding named cluster boxes in place (repo → folder → file → function); neighbours reflow with no overlap and edges re-route to the deepest visible node on each end, via a single nested ELK layout pass.
-> - **Drill to functions/classes** — click a file (any type: `file`/`endpoint`/`service`/`schema`/…) to nest its functions and classes inside it as a sized box.
-> - **Live edge re-routing** — relationships aggregate to the deepest visible ancestor and refresh on every expand/collapse, so collapsed folder boxes stay connected.
->
-> **Correctness fixes**
-> - Edges into collapsed folder boxes now render (added React Flow handles to container nodes).
-> - No node overlap at depth ≥2 (absolute → parent-relative coordinate conversion).
-> - Expanded files no longer stack their functions (parent box carries its ELK-computed size).
-> - Removed a buggy auto-pan that yanked focus off-screen on expand.
->
-> **Verified** with `tsc`, 53 unit tests, `build`, and Playwright e2e on both a synthetic graph and a real LLM-generated graph (`savo_pricing_service`): full expansion to function level with **0 overlaps** and a stable viewport on expand.
+> Two enhancements layered on top of upstream **Understand Anything**. Each lives on its own branch (kept intact) and is proposed back upstream as a pull request.
 
-> [!NOTE]
-> ## 🔗 Cross-repo knowledge graphs in this fork
->
-> A second enhancement adds **`/understand-crossrepo`** — combine several interlinked microservice repos into **one** namespaced, per-repo-layered, cross-linked knowledge graph, explorable in the existing dashboard (**no dashboard changes**). The work lives on the `feat/understand-crossrepo` branch and is proposed upstream in [Egonex-AI/Understand-Anything#521](https://github.com/Egonex-AI/Understand-Anything/pull/521).
->
-> **Why it helps** — Understand Anything analyzes one repo at a time, so on a microservice platform you can't see how the services actually fit together — the links that matter are *runtime* integrations (HTTP calls between services, a shared SSO/Keycloak provider, iframe embeds, Pub/Sub, shared buckets) that per-repo static analysis is blind to. This draws the whole platform as a single picture: which service calls which, who authenticates through Keycloak, what shares GCP/storage. The payoff: onboard to a multi-service system in one view instead of stitching N graphs together in your head, trace cross-service dependencies, and judge the blast radius of a change *across* repos — not just inside one. Each edge carries evidence, so a link is a lead you can verify, not a guess.
->
-> **What's new**
-> - **Multi-repo orchestration** — select N repos, reuse-or-fill each repo's `/understand` graph (fresh by git commit), then combine into one graph.
-> - **Per-repo namespacing + layering** — every node id becomes `<type>:<repo>/<path>[:member]` (zero collisions across repos); each repo is its own dashboard layer with a `module:<repo>` anchor.
-> - **Hybrid interlink discovery** — a deterministic, stdlib-only signal scanner (outbound API hosts, Keycloak clients, iframe/`ct_token` embeds, Pub/Sub topics, GCS buckets) feeds an LLM linker that emits typed cross-repo edges (`calls` / `authenticates_via` / `embeds` / `publishes` / …) with confidence and evidence, self-grounded against each repo's served identity.
-> - **Synthesized shared infra** — external services (Keycloak, GCP, a shared data hub) become `service:external/<svc>` nodes in an `External / Shared Infra` layer, so cross-repo edges terminate on real endpoints.
->
-> **Verified** with 31 unit tests (extractor 16 `node:test`, combine + apply 15 `pytest`) and a live end-to-end run on three real services (`savo_pricing_ui` + `savo_pricing_service` + `savo_bridge_service`): a 508-node / 761-edge / **4-layer** combined graph with **0 id collisions** and 10 cross-repo edges (incl. `pricing_ui → bridge` and all repos → Keycloak), rendered in the dashboard with **0 validation errors**.
+### 🔗 [Multi-level drill-down (expand-in-place)](https://github.com/Hafiz408/Understand-Anything/tree/feat/multi-level-drilldown)
+
+<sub>Branch: [`feat/multi-level-drilldown`](https://github.com/Hafiz408/Understand-Anything/tree/feat/multi-level-drilldown) · Proposed upstream: [Egonex-AI/Understand-Anything#520](https://github.com/Egonex-AI/Understand-Anything/pull/520)</sub>
+
+**What it is** — a dashboard navigation mode that turns the flat knowledge graph into a hierarchy you open *in place*: start at the repo/layer view and expand one box at a time, all the way down to individual functions, without ever leaving the page.
+
+**Why it helps** — On a large codebase the default graph is an overwhelming wall of thousands of nodes, and clicking a node re-roots the whole view so you lose your place. Drill-down flips that: expand *only* the part you care about while everything around it stays put and relationships re-route to follow you. You learn a 200k-line system the way a person actually would — top-down and by need — instead of being dropped into the entire graph at once. The payoff: faster onboarding, far less cognitive overload, and you never lose the surrounding context while you dig into a detail.
+
+**What's new**
+- **Expand-in-place navigation** — drill the file-path hierarchy by expanding named cluster boxes in place (repo → folder → file → function); neighbours reflow with no overlap and edges re-route to the deepest visible node on each end, via a single nested ELK layout pass.
+- **Drill to functions/classes** — click a file (any type: `file`/`endpoint`/`service`/`schema`/…) to nest its functions and classes inside it as a sized box.
+- **Live edge re-routing** — relationships aggregate to the deepest visible ancestor and refresh on every expand/collapse, so collapsed folder boxes stay connected.
+
+**Correctness fixes**
+- Edges into collapsed folder boxes now render (added React Flow handles to container nodes).
+- No node overlap at depth ≥2 (absolute → parent-relative coordinate conversion).
+- Expanded files no longer stack their functions (parent box carries its ELK-computed size).
+- Removed a buggy auto-pan that yanked focus off-screen on expand.
+
+**Verified** with `tsc`, 53 unit tests, `build`, and Playwright e2e on both a synthetic graph and a real LLM-generated graph (`savo_pricing_service`): full expansion to function level with **0 overlaps** and a stable viewport on expand.
+
+### 🔗 [Cross-repo knowledge graphs](https://github.com/Hafiz408/Understand-Anything/tree/feat/understand-crossrepo)
+
+<sub>Branch: [`feat/understand-crossrepo`](https://github.com/Hafiz408/Understand-Anything/tree/feat/understand-crossrepo) · Proposed upstream: [Egonex-AI/Understand-Anything#521](https://github.com/Egonex-AI/Understand-Anything/pull/521)</sub>
+
+**What it is** — a new **`/understand-crossrepo`** command that takes several related repos and builds a *single* combined knowledge graph — each repo as its own layer, wired together with typed cross-service edges — viewable in the existing dashboard with **no dashboard changes**.
+
+**Why it helps** — Understand Anything analyzes one repo at a time, so on a microservice platform you can't see how the services actually fit together — the links that matter are *runtime* integrations (HTTP calls between services, a shared SSO/Keycloak provider, iframe embeds, Pub/Sub, shared buckets) that per-repo static analysis is blind to. This draws the whole platform as a single picture: which service calls which, who authenticates through Keycloak, what shares GCP/storage. The payoff: onboard to a multi-service system in one view instead of stitching N graphs together in your head, trace cross-service dependencies, and judge the blast radius of a change *across* repos — not just inside one. Each edge carries evidence, so a link is a lead you can verify, not a guess.
+
+**What's new**
+- **Multi-repo orchestration** — select N repos, reuse-or-fill each repo's `/understand` graph (fresh by git commit), then combine into one graph.
+- **Per-repo namespacing + layering** — every node id becomes `<type>:<repo>/<path>[:member]` (zero collisions across repos); each repo is its own dashboard layer with a `module:<repo>` anchor.
+- **Hybrid interlink discovery** — a deterministic, stdlib-only signal scanner (outbound API hosts, Keycloak clients, iframe/`ct_token` embeds, Pub/Sub topics, GCS buckets) feeds an LLM linker that emits typed cross-repo edges (`calls` / `authenticates_via` / `embeds` / `publishes` / …) with confidence and evidence, self-grounded against each repo's served identity.
+- **Synthesized shared infra** — external services (Keycloak, GCP, a shared data hub) become `service:external/<svc>` nodes in an `External / Shared Infra` layer, so cross-repo edges terminate on real endpoints.
+
+**Verified** with 31 unit tests (extractor 16 `node:test`, combine + apply 15 `pytest`) and a live end-to-end run on three real services (`savo_pricing_ui` + `savo_pricing_service` + `savo_bridge_service`): a 508-node / 761-edge / **4-layer** combined graph with **0 id collisions** and 10 cross-repo edges (incl. `pricing_ui → bridge` and all repos → Keycloak), rendered in the dashboard with **0 validation errors**.
 
 ---
 
