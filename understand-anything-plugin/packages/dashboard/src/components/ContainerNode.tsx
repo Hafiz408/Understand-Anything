@@ -1,6 +1,8 @@
 import { memo } from "react";
+import { Handle, Position } from "@xyflow/react";
 import type { NodeProps, Node } from "@xyflow/react";
 import { getLayerColor } from "./LayerLegend";
+import { useDashboardStore } from "../store";
 
 export interface ContainerNodeData extends Record<string, unknown> {
   containerId: string;
@@ -13,7 +15,6 @@ export interface ContainerNodeData extends Record<string, unknown> {
   searchHitCount?: number;
   isDiffAffected: boolean;
   isFocusedViaChild: boolean;
-  onToggle: (containerId: string) => void;
 }
 
 export type ContainerFlowNode = Node<ContainerNodeData, "container">;
@@ -33,16 +34,16 @@ function ContainerNodeComponent({ data, width, height }: NodeProps<ContainerFlow
 
   const handleToggle = (e: React.SyntheticEvent) => {
     e.stopPropagation();
-    data.onToggle(data.containerId);
+    useDashboardStore.getState().toggleContainer(data.containerId);
   };
 
   return (
     <div
       role="button"
       tabIndex={0}
+      aria-label={`${labelText} cluster, ${data.childCount} item${data.childCount !== 1 ? "s" : ""}, ${data.isExpanded ? "expanded" : "collapsed"}`}
       aria-expanded={data.isExpanded}
-      aria-label={`${labelText} container, ${data.childCount} item${data.childCount !== 1 ? "s" : ""}, ${data.isExpanded ? "expanded" : "collapsed"}`}
-      className="rounded-xl cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.6)]"
+      className="rounded-xl cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.6)] hover:border-gold/60"
       style={{
         width,
         height,
@@ -58,6 +59,9 @@ function ContainerNodeComponent({ data, width, height }: NodeProps<ContainerFlow
         }
       }}
     >
+      {/* Aggregated edges anchor here when this box is collapsed; without a
+          Handle, React Flow silently drops every edge into a folder box. */}
+      <Handle type="target" position={Position.Top} className="!bg-text-muted !w-2 !h-2" />
       <div
         className="flex items-center justify-between font-heading"
         style={{
@@ -71,7 +75,7 @@ function ContainerNodeComponent({ data, width, height }: NodeProps<ContainerFlow
           className={labelDimmed ? "opacity-50" : ""}
           style={{ display: "flex", alignItems: "center", gap: 6 }}
         >
-          {data.isExpanded && <span style={{ fontSize: 10 }}>▾</span>}
+          <span style={{ fontSize: 10, color: color.label }}>{data.isExpanded ? "▾" : "▸"}</span>
           {labelText}
           {data.searchHitCount != null && data.searchHitCount > 0 && (
             <span
@@ -91,6 +95,7 @@ function ContainerNodeComponent({ data, width, height }: NodeProps<ContainerFlow
         </span>
         <span style={{ color: "#a39787", fontSize: 11 }}>{data.childCount}</span>
       </div>
+      <Handle type="source" position={Position.Bottom} className="!bg-text-muted !w-2 !h-2" />
     </div>
   );
 }

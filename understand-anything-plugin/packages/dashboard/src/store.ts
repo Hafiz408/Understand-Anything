@@ -8,6 +8,20 @@ import type {
   TourStep,
 } from "@understand-anything/core/types";
 import type { ReactFlowInstance } from "@xyflow/react";
+import { TRANSPARENT } from "./utils/containers";
+
+export function ancestorContainerIds(filePath: string): string[] {
+  const segs = filePath.split("/").filter(Boolean);
+  const out: string[] = [];
+  let acc = "";
+  for (let i = 0; i < segs.length - 1; i++) {
+    const s = segs[i];
+    acc = acc ? `${acc}/${s}` : s;
+    if (TRANSPARENT.has(s)) continue;
+    out.push(`container:${acc}`);
+  }
+  return out;
+}
 
 export type Persona = "non-technical" | "junior" | "experienced";
 export type NavigationLevel = "overview" | "layer-detail";
@@ -200,37 +214,17 @@ interface DashboardStore {
   navigateToDomain: (domainId: string) => void;
   clearActiveDomain: () => void;
 
-  // Container expand/collapse + lazy layout caches
+  // Container expand/collapse (expand-in-place model)
   expandedContainers: Set<string>;
-  toggleContainer: (containerId: string) => void;
-  expandContainer: (containerId: string) => void;
-  collapseContainer: (containerId: string) => void;
+  toggleContainer: (id: string) => void;
+  expandContainer: (id: string) => void;
+  collapseContainer: (id: string) => void;
   collapseAllContainers: () => void;
-  /** Container the user just manually expanded; viewport should lock onto it. Cleared by GraphView once the lock is applied. */
-  pendingFocusContainer: string | null;
-  setPendingFocusContainer: (containerId: string | null) => void;
   /** True while TourFitView is waiting for highlighted nodes to materialise (Stage 2 layout in progress). Drives the "Computing layout…" overlay. */
   tourFitPending: boolean;
   setTourFitPending: (pending: boolean) => void;
-
-  containerLayoutCache: Map<
-    string,
-    {
-      childPositions: Map<string, { x: number; y: number }>;
-      actualSize: { width: number; height: number };
-    }
-  >;
-  setContainerLayout: (
-    containerId: string,
-    childPositions: Map<string, { x: number; y: number }>,
-    actualSize: { width: number; height: number },
-  ) => void;
-  clearContainerLayouts: () => void;
-
-  containerSizeMemory: Map<string, { width: number; height: number }>;
-
-  stage1Tick: number;
-  bumpStage1Tick: () => void;
+  // Reveal a node (e.g. from search) by expanding its ancestor containers.
+  revealNode: (id: string) => void;
 
   // Layout-time issues (e.g. ELK input repair). Funneled into the
   // WarningBanner alongside graph-validation issues.
@@ -276,13 +270,7 @@ function layerResetIfChanged(
   const next = layerNav.activeLayerId;
   if (!next || next === prevLayerId) return {};
   return {
-    containerLayoutCache: new Map(),
-    containerSizeMemory: new Map(),
     expandedContainers: new Set(),
-    // Drop any pending focus too — its id was scoped to the previous
-    // layer and would otherwise re-collide with a same-id container in
-    // the new layer for the duration of the 1.2s timer.
-    pendingFocusContainer: null,
   };
 }
 
@@ -330,36 +318,22 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
         ...state.nodeTypeFilters,
         [category]: !state.nodeTypeFilters[category],
       },
-      // Filter changes shift container.nodeIds; cached child positions
-      // may reference filtered-out children. Drop the cache so Stage 2
-      // recomputes against the current set.
-      containerLayoutCache: new Map(),
-      containerSizeMemory: new Map(),
       expandedContainers: new Set(),
-      pendingFocusContainer: null,
     })),
 
   detailLevel: "file",
   setDetailLevel: (level) =>
     set({
       detailLevel: level,
-      // Detail level changes which nodes are visible; cached positions stale.
-      // Reset fn toggle so it doesn't resurrect when re-entering class view.
       showFunctionsInClassView: false,
-      containerLayoutCache: new Map(),
-      containerSizeMemory: new Map(),
       expandedContainers: new Set(),
-      pendingFocusContainer: null,
     }),
 
   showFunctionsInClassView: false,
   toggleShowFunctionsInClassView: () =>
     set((state) => ({
       showFunctionsInClassView: !state.showFunctionsInClassView,
-      containerLayoutCache: new Map(),
-      containerSizeMemory: new Map(),
       expandedContainers: new Set(),
-      pendingFocusContainer: null,
     })),
 
   setGraph: (graph) => {
@@ -384,11 +358,7 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
       nodeHistory: [],
       viewMode: keepDomainView ? "domain" as const : "structural" as const,
       activeDomainId: keepDomainView ? activeDomainId : null,
-      containerLayoutCache: new Map(),
       expandedContainers: new Set(),
-      pendingFocusContainer: null,
-      containerSizeMemory: new Map(),
-      stage1Tick: 0,
       layoutIssues: [],
     });
   },
@@ -480,13 +450,7 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
       codeViewerOpen: false,
       codeViewerNodeId: null,
       codeViewerExpanded: false,
-      // Container ids derive from folder names and collide across layers
-      // (e.g. `container:auth` exists in many layers). Drop the cache so
-      // we don't render stale positions for the new layer's children.
-      containerLayoutCache: new Map(),
-      containerSizeMemory: new Map(),
       expandedContainers: new Set(),
-      pendingFocusContainer: null,
     }),
 
   navigateToOverview: () =>
@@ -498,23 +462,14 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
       codeViewerOpen: false,
       codeViewerNodeId: null,
       codeViewerExpanded: false,
-      containerLayoutCache: new Map(),
-      containerSizeMemory: new Map(),
       expandedContainers: new Set(),
-      pendingFocusContainer: null,
     }),
 
   setFocusNode: (nodeId) =>
     set({
       focusNodeId: nodeId,
       selectedNodeId: nodeId,
-      // Focus mode narrows filteredGraphNodes to focus + 1-hop; the
-      // surviving containers have a subset of their original children,
-      // and the cache must not return positions for filtered-out ids.
-      containerLayoutCache: new Map(),
-      containerSizeMemory: new Map(),
       expandedContainers: new Set(),
-      pendingFocusContainer: null,
     }),
   setSearchMode: (mode) => set({ searchMode: mode }),
   setSearchQuery: (query) => {
@@ -534,11 +489,7 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
   setPersona: (persona) =>
     set({
       persona,
-      // Persona changes filter node types, which shifts container.nodeIds.
-      containerLayoutCache: new Map(),
-      containerSizeMemory: new Map(),
       expandedContainers: new Set(),
-      pendingFocusContainer: null,
     }),
 
   openCodeViewer: (nodeId) =>
@@ -715,56 +666,27 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
   },
 
   expandedContainers: new Set<string>(),
-  pendingFocusContainer: null,
-  setPendingFocusContainer: (containerId) =>
-    set({ pendingFocusContainer: containerId }),
   tourFitPending: false,
   setTourFitPending: (pending) => set({ tourFitPending: pending }),
-  toggleContainer: (containerId) =>
-    set((state) => {
-      const next = new Set(state.expandedContainers);
-      const willExpand = !next.has(containerId);
-      if (willExpand) next.add(containerId);
-      else next.delete(containerId);
-      return {
-        expandedContainers: next,
-        pendingFocusContainer: willExpand
-          ? containerId
-          : state.pendingFocusContainer,
-      };
-    }),
-  expandContainer: (containerId) =>
-    set((state) => {
-      if (state.expandedContainers.has(containerId)) return {};
-      const next = new Set(state.expandedContainers);
-      next.add(containerId);
-      return { expandedContainers: next };
-    }),
-  collapseContainer: (containerId) =>
-    set((state) => {
-      if (!state.expandedContainers.has(containerId)) return {};
-      const next = new Set(state.expandedContainers);
-      next.delete(containerId);
-      return { expandedContainers: next };
-    }),
+  toggleContainer: (id) =>
+    set((s) => { const n = new Set(s.expandedContainers); n.has(id) ? n.delete(id) : n.add(id); return { expandedContainers: n }; }),
+  expandContainer: (id) =>
+    set((s) => { if (s.expandedContainers.has(id)) return {}; const n = new Set(s.expandedContainers); n.add(id); return { expandedContainers: n }; }),
+  collapseContainer: (id) =>
+    set((s) => { if (!s.expandedContainers.has(id)) return {}; const n = new Set(s.expandedContainers); n.delete(id); return { expandedContainers: n }; }),
   collapseAllContainers: () => set({ expandedContainers: new Set() }),
-
-  containerLayoutCache: new Map(),
-  setContainerLayout: (containerId, childPositions, actualSize) =>
-    set((state) => {
-      const next = new Map(state.containerLayoutCache);
-      next.set(containerId, { childPositions, actualSize });
-      const sizeNext = new Map(state.containerSizeMemory);
-      sizeNext.set(containerId, actualSize);
-      return { containerLayoutCache: next, containerSizeMemory: sizeNext };
+  revealNode: (id) =>
+    set((s) => {
+      const node = s.nodesById.get(id); const fp = node?.filePath; const n = new Set(s.expandedContainers);
+      if (fp) { for (const cid of ancestorContainerIds(fp)) n.add(cid); if (node?.type === "function" || node?.type === "class") n.add(`file:${fp}`); }
+      // Record back-nav history the same way selectNode does — search/tour
+      // reveals must not silently drop the "back" affordance.
+      const nodeHistory =
+        s.selectedNodeId && s.selectedNodeId !== id
+          ? [...s.nodeHistory, s.selectedNodeId].slice(-MAX_HISTORY)
+          : s.nodeHistory;
+      return { expandedContainers: n, selectedNodeId: id, nodeHistory };
     }),
-  clearContainerLayouts: () =>
-    set({ containerLayoutCache: new Map(), expandedContainers: new Set(), pendingFocusContainer: null }),
-
-  containerSizeMemory: new Map(),
-
-  stage1Tick: 0,
-  bumpStage1Tick: () => set((s) => ({ stage1Tick: s.stage1Tick + 1 })),
 
   layoutIssues: [],
   appendLayoutIssues: (issues) =>
