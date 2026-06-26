@@ -66,6 +66,19 @@
 >
 > **Verified** with `tsc`, 53 unit tests, `build`, and Playwright e2e on both a synthetic graph and a real LLM-generated graph (`savo_pricing_service`): full expansion to function level with **0 overlaps** and a stable viewport on expand.
 
+> [!NOTE]
+> ## 🔗 Cross-repo knowledge graphs in this fork
+>
+> A second enhancement adds **`/understand-crossrepo`** — combine several interlinked microservice repos into **one** namespaced, per-repo-layered, cross-linked knowledge graph, explorable in the existing dashboard (**no dashboard changes**). The work lives on the `feat/understand-crossrepo` branch and is proposed upstream in [Egonex-AI/Understand-Anything#521](https://github.com/Egonex-AI/Understand-Anything/pull/521).
+>
+> **What's new**
+> - **Multi-repo orchestration** — select N repos, reuse-or-fill each repo's `/understand` graph (fresh by git commit), then combine into one graph.
+> - **Per-repo namespacing + layering** — every node id becomes `<type>:<repo>/<path>[:member]` (zero collisions across repos); each repo is its own dashboard layer with a `module:<repo>` anchor.
+> - **Hybrid interlink discovery** — a deterministic, stdlib-only signal scanner (outbound API hosts, Keycloak clients, iframe/`ct_token` embeds, Pub/Sub topics, GCS buckets) feeds an LLM linker that emits typed cross-repo edges (`calls` / `authenticates_via` / `embeds` / `publishes` / …) with confidence and evidence, self-grounded against each repo's served identity.
+> - **Synthesized shared infra** — external services (Keycloak, GCP, a shared data hub) become `service:external/<svc>` nodes in an `External / Shared Infra` layer, so cross-repo edges terminate on real endpoints.
+>
+> **Verified** with 31 unit tests (extractor 16 `node:test`, combine + apply 15 `pytest`) and a live end-to-end run on three real services (`savo_pricing_ui` + `savo_pricing_service` + `savo_bridge_service`): a 508-node / 761-edge / **4-layer** combined graph with **0 id collisions** and 10 cross-repo edges (incl. `pricing_ui → bridge` and all repos → Keycloak), rendered in the dashboard with **0 validation errors**.
+
 ---
 
 **You just joined a new team. The codebase is 200,000 lines of code. Where do you even start?**
