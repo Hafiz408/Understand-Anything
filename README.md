@@ -48,6 +48,26 @@
 
 ---
 
+> [!NOTE]
+> ## 🔧 Enhancements in this fork
+>
+> This fork extends the upstream **Understand Anything** base version with a **multi-level drill-down (expand-in-place)** dashboard experience, plus several rendering correctness fixes. The work lives on the `feat/multi-level-drilldown` branch and is proposed upstream in [Egonex-AI/Understand-Anything#520](https://github.com/Egonex-AI/Understand-Anything/pull/520).
+>
+> **What's new**
+> - **Expand-in-place navigation** — drill the file-path hierarchy by expanding named cluster boxes in place (repo → folder → file → function); neighbours reflow with no overlap and edges re-route to the deepest visible node on each end, via a single nested ELK layout pass.
+> - **Drill to functions/classes** — click a file (any type: `file`/`endpoint`/`service`/`schema`/…) to nest its functions and classes inside it as a sized box.
+> - **Live edge re-routing** — relationships aggregate to the deepest visible ancestor and refresh on every expand/collapse, so collapsed folder boxes stay connected.
+>
+> **Correctness fixes**
+> - Edges into collapsed folder boxes now render (added React Flow handles to container nodes).
+> - No node overlap at depth ≥2 (absolute → parent-relative coordinate conversion).
+> - Expanded files no longer stack their functions (parent box carries its ELK-computed size).
+> - Removed a buggy auto-pan that yanked focus off-screen on expand.
+>
+> **Verified** with `tsc`, 53 unit tests, `build`, and Playwright e2e on both a synthetic graph and a real LLM-generated graph (`savo_pricing_service`): full expansion to function level with **0 overlaps** and a stable viewport on expand.
+
+---
+
 **You just joined a new team. The codebase is 200,000 lines of code. Where do you even start?**
 
 Understand Anything is a [Claude Code Plugin](https://code.claude.com/docs/en/plugins-reference#plugins-reference) that analyzes your project with a multi-agent pipeline, builds a knowledge graph of every file, function, class, and dependency, then gives you an interactive dashboard to explore it all visually. Stop reading code blind. Start seeing the big picture.
